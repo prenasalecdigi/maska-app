@@ -110,63 +110,75 @@
     <canvas id="canvas" style="display:none;"></canvas>
   </div>
 
-  <script>
-    const video = document.getElementById('video');
-    const mask = document.getElementById('mask');
-    const canvas = document.getElementById('canvas');
-    const captureBtn = document.getElementById('captureBtn');
-    const downloadLink = document.getElementById('downloadLink');
+ <script>
+  const video = document.getElementById('video');
+  const mask = document.getElementById('mask');
+  const canvas = document.getElementById('canvas');
+  const captureBtn = document.getElementById('captureBtn');
 
-    // 1) Dostop do kamere
-    async function startCamera() {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "user" } // sprednja kamera
-        });
-        video.srcObject = stream;
-      } catch (err) {
-        alert("Ne morem dostopati do kamere. Dovoli uporabo kamere v brskalniku.\nNapaka: " + err.message);
-      }
+  // 1) Zaženemo kamero
+  async function startCamera() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "user" } // sprednja kamera
+      });
+      video.srcObject = stream;
+    } catch (err) {
+      alert("Ne morem dostopati do kamere. Dovoli uporabo kamere v brskalniku.\nNapaka: " + err.message);
+    }
+  }
+
+  startCamera();
+
+  // 2) Klik na gumb "Slikaj se"
+  captureBtn.addEventListener('click', () => {
+    // Če kamera še ni pripravljena
+    if (!video.videoWidth || !video.videoHeight) {
+      alert("Kamera se še zaganja. Poskusi ponovno čez trenutek.");
+      return;
     }
 
-    startCamera();
+    const width = video.videoWidth;
+    const height = video.videoHeight;
 
-    // 2) Slikanje
-    captureBtn.addEventListener('click', () => {
-      // počakamo, da se video inicializira
-      if (!video.videoWidth || !video.videoHeight) {
-        alert("Kamera se še zaganja. Poskusi ponovno čez trenutek.");
-        return;
-      }
+    canvas.width = width;
+    canvas.height = height;
 
-      const width = video.videoWidth;
-      const height = video.videoHeight;
+    const ctx = canvas.getContext('2d');
 
-      canvas.width = width;
-      canvas.height = height;
+    // Najprej narišemo sliko iz kamere
+    ctx.drawImage(video, 0, 0, width, height);
 
-      const ctx = canvas.getContext('2d');
+    // Ko je maska naložena, jo narišemo čez
+    const drawAndSave = () => {
+      ctx.drawImage(mask, 0, 0, width, height);
+      saveImage();
+    };
 
-      // Najprej narišemo sliko iz kamere
-      ctx.drawImage(video, 0, 0, width, height);
-
-      // Ko je maska naložena, jo narišemo čez
-      if (mask.complete) {
-        ctx.drawImage(mask, 0, 0, width, height);
-        createDownloadLink();
-      } else {
-        mask.onload = () => {
-          ctx.drawImage(mask, 0, 0, width, height);
-          createDownloadLink();
-        };
-      }
-    });
-
-    function createDownloadLink() {
-      const dataUrl = canvas.toDataURL("image/png");
-      downloadLink.href = dataUrl;
-      downloadLink.style.display = 'inline-block';
+    if (mask.complete) {
+      drawAndSave();
+    } else {
+      mask.onload = drawAndSave;
     }
-  </script>
+  });
+
+  // 3) Ustvari prenos (download) slike
+  function saveImage() {
+    const dataUrl = canvas.toDataURL("image/png");
+
+    // Ustvarimo začasen <a> in simuliramo klik nanj
+    const a = document.createElement('a');
+    a.href = dataUrl;
+    a.download = 'kravica-selfie.png';
+
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+
+    // Malo povratne info za uporabnika
+    alert("Fotka je ustvarjena! Če se ti je odprla v novem oknu, jo tam shrani na telefon. Če se je shranila v 'Prenosi/Downloads', jo najdeš v galeriji.");
+  }
+</script>
 </body>
 </html>
+
