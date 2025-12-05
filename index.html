@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="sl">
+<head>
+  <meta charset="UTF-8">
+  <title>Postani kravica 🐄</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: #000;
+      color: #fff;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      overflow: hidden;
+    }
+
+    #app {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* Kamera čez cel ekran */
+    #video {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    /* Maska kravice na vrhu */
+    #mask {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      pointer-events: none; /* da se klik prenese na gumbe spodaj */
+    }
+
+    /* Spodnja vrstica z gumbi */
+    .controls {
+      position: absolute;
+      bottom: 1.5rem;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0 1rem;
+      text-align: center;
+    }
+
+    button {
+      padding: 0.7rem 1.4rem;
+      border: none;
+      border-radius: 999px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      background: #ffffff;
+      color: #222;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+    }
+
+    button:active {
+      transform: scale(0.97);
+    }
+
+    #downloadLink {
+      display: none;
+      font-size: 0.9rem;
+      text-decoration: underline;
+      color: #fff;
+    }
+
+    .note {
+      font-size: 0.75rem;
+      opacity: 0.8;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <video id="video" autoplay playsinline></video>
+    <!-- TU ZAMENJAJ Ime datoteke, če ni enako -->
+    <img id="mask" src="kravica-mask.png" alt="Kravica maska">
+
+    <div class="controls">
+      <button id="captureBtn">Slikaj se 🐄</button>
+      <a id="downloadLink" download="kravica-selfie.png">Prenesi fotografijo 🐮</a>
+      <div class="note">
+        Po fotografiranju klikni "Prenesi fotografijo" in sliko shrani na telefon.
+      </div>
+    </div>
+
+    <!-- skriti canvas za zajem slike -->
+    <canvas id="canvas" style="display:none;"></canvas>
+  </div>
+
+  <script>
+    const video = document.getElementById('video');
+    const mask = document.getElementById('mask');
+    const canvas = document.getElementById('canvas');
+    const captureBtn = document.getElementById('captureBtn');
+    const downloadLink = document.getElementById('downloadLink');
+
+    // 1) Dostop do kamere
+    async function startCamera() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "user" } // sprednja kamera
+        });
+        video.srcObject = stream;
+      } catch (err) {
+        alert("Ne morem dostopati do kamere. Dovoli uporabo kamere v brskalniku.\nNapaka: " + err.message);
+      }
+    }
+
+    startCamera();
+
+    // 2) Slikanje
+    captureBtn.addEventListener('click', () => {
+      // počakamo, da se video inicializira
+      if (!video.videoWidth || !video.videoHeight) {
+        alert("Kamera se še zaganja. Poskusi ponovno čez trenutek.");
+        return;
+      }
+
+      const width = video.videoWidth;
+      const height = video.videoHeight;
+
+      canvas.width = width;
+      canvas.height = height;
+
+      const ctx = canvas.getContext('2d');
+
+      // Najprej narišemo sliko iz kamere
+      ctx.drawImage(video, 0, 0, width, height);
+
+      // Ko je maska naložena, jo narišemo čez
+      if (mask.complete) {
+        ctx.drawImage(mask, 0, 0, width, height);
+        createDownloadLink();
+      } else {
+        mask.onload = () => {
+          ctx.drawImage(mask, 0, 0, width, height);
+          createDownloadLink();
+        };
+      }
+    });
+
+    function createDownloadLink() {
+      const dataUrl = canvas.toDataURL("image/png");
+      downloadLink.href = dataUrl;
+      downloadLink.style.display = 'inline-block';
+    }
+  </script>
+</body>
+</html>
